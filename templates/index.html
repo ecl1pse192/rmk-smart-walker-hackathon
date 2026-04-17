@@ -85,6 +85,17 @@
         const statusBody = document.getElementById('statusBody');
         const photoHint = document.getElementById('photoHint');
 
+        const getCookie = (name) => {
+            const cookies = document.cookie ? document.cookie.split('; ') : [];
+            for (const c of cookies) {
+                const i = c.indexOf('=');
+                const k = i >= 0 ? c.slice(0, i) : c;
+                if (k === name) return decodeURIComponent(i >= 0 ? c.slice(i + 1) : '');
+            }
+            return null;
+        };
+
+        
         const setStatus = (kind, title, body) => {
             statusWrap.classList.remove('hidden', 'bg-emerald-50', 'ring-emerald-200', 'bg-rose-50', 'ring-rose-200', 'bg-slate-100', 'ring-slate-200');
             statusIcon.classList.remove('bg-emerald-600', 'bg-rose-600', 'bg-slate-700');
@@ -172,8 +183,11 @@
             try {
                 setBusy(true);
                 setStatus('info', 'Отправка…', 'Загружаю фото и создаю запись в API.');
+                const csrfToken = getCookie('csrftoken');
                 const response = await fetch('/api/readings/', {
                     method: 'POST',
+                    credentials: 'same-origin',
+                    headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {},
                     body: formData
                 });
                 

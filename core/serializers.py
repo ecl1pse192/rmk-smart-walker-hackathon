@@ -51,6 +51,9 @@ class InspectionSerializer(serializers.ModelSerializer):
 
 
 class ReadingSerializer(serializers.ModelSerializer):
+    value = serializers.DecimalField(max_digits=14, decimal_places=4, read_only=True)
+    is_out_of_norm = serializers.BooleanField(read_only=True)
+
     class Meta:
         model: ClassVar[Type[Reading]] = Reading
         fields: ClassVar[List[str]] = [
