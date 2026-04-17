@@ -16,41 +16,7 @@
                 <p class="mt-2 text-sm text-slate-400">Выберите прибор и начните осмотр с фотофиксацией.</p>
             </header>
 
-            <div class="flex flex-1 flex-col gap-3">
-                <article class="rounded-2xl border border-slate-700/80 bg-slate-800/60 p-4 shadow-lg shadow-black/20 ring-1 ring-white/5">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <h2 class="text-base font-semibold text-white">Манометр давления</h2>
-                            <p class="mt-1 text-sm text-slate-400">Цех 1</p>
-                        </div>
-                        <span class="shrink-0 rounded-lg bg-slate-700/80 px-2 py-1 text-xs font-medium text-slate-300">Активно</span>
-                    </div>
-                    <button
-                        type="button"
-                        data-start-inspection
-                        class="mt-4 w-full rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-900 transition active:scale-[0.99] hover:bg-white"
-                    >
-                        Начать осмотр
-                    </button>
-                </article>
-
-                <article class="rounded-2xl border border-slate-700/80 bg-slate-800/60 p-4 shadow-lg shadow-black/20 ring-1 ring-white/5">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <h2 class="text-base font-semibold text-white">Датчик температуры</h2>
-                            <p class="mt-1 text-sm text-slate-400">Линия подачи</p>
-                        </div>
-                        <span class="shrink-0 rounded-lg bg-slate-700/80 px-2 py-1 text-xs font-medium text-slate-300">Активно</span>
-                    </div>
-                    <button
-                        type="button"
-                        data-start-inspection
-                        class="mt-4 w-full rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-900 transition active:scale-[0.99] hover:bg-white"
-                    >
-                        Начать осмотр
-                    </button>
-                </article>
-            </div>
+            <div id="equipment-list" class="flex flex-1 flex-col gap-3"></div>
 
             <footer class="mt-auto text-center text-xs text-slate-500">
                 <div>Тестовая PWA-заглушка для хакатона.</div>
@@ -79,7 +45,7 @@
                 <p class="text-sm text-slate-400">Сделайте фото прибора и отправьте в систему для проверки нормы.</p>
 
                 <form id="uploadForm" class="flex flex-col gap-4">
-                    <input type="hidden" id="equipment_id" value="f2fe0f50-3387-405f-b02d-2a45daeccf88">
+                    <input type="hidden" id="equipment_id" value="">
                     <input type="hidden" id="inspection_id" value="d4d9dda0-851d-46f8-9ef4-c7b5cac8522d">
 
                     <input type="file" id="instrument_photo" accept="image/*" capture="environment" required class="hidden">
@@ -381,10 +347,76 @@
             });
         };
 
-        document.querySelectorAll('[data-start-inspection]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                showScreen('camera');
-            });
+        const equipmentListEl = document.getElementById('equipment-list');
+        const equipmentIdInput = document.getElementById('equipment_id');
+
+        const escapeHtml = (s) =>
+            String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+
+        const normalizeEquipmentPayload = (data) => {
+            let raw = [];
+            if (Array.isArray(data)) raw = data;
+            else if (data && Array.isArray(data.results)) raw = data.results;
+            return raw.filter((eq) => eq && eq.id);
+        };
+
+        const renderEquipmentCards = (items) => {
+            if (!items.length) {
+                equipmentListEl.innerHTML =
+                    '<p class="rounded-2xl border border-slate-700/80 bg-slate-800/40 px-4 py-6 text-center text-sm text-slate-400 ring-1 ring-white/5">Нет доступного оборудования.</p>';
+                return;
+            }
+            equipmentListEl.innerHTML = items
+                .map(
+                    (eq) => `
+                <article class="rounded-2xl border border-slate-700/80 bg-slate-800/60 p-4 shadow-lg shadow-black/20 ring-1 ring-white/5">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h2 class="text-base font-semibold text-white">${escapeHtml(eq.name)}</h2>
+                            <p class="mt-1 text-sm text-slate-400">${escapeHtml(eq.shop)}</p>
+                        </div>
+                        <span class="shrink-0 rounded-lg bg-slate-700/80 px-2 py-1 text-xs font-medium text-slate-300">Активно</span>
+                    </div>
+                    <button
+                        type="button"
+                        data-start-inspection
+                        data-equipment-id="${escapeHtml(eq.id)}"
+                        class="mt-4 w-full rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-900 transition active:scale-[0.99] hover:bg-white"
+                    >
+                        Начать осмотр
+                    </button>
+                </article>`
+                )
+                .join('');
+        };
+
+        const loadEquipmentList = async () => {
+            equipmentListEl.innerHTML =
+                '<p class="py-6 text-center text-sm text-slate-500">Загрузка заданий…</p>';
+            try {
+                const response = await fetch('/api/equipment/', {
+                    credentials: 'same-origin',
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+                renderEquipmentCards(normalizeEquipmentPayload(data));
+            } catch (err) {
+                equipmentListEl.innerHTML = `<p class="rounded-2xl border border-rose-900/50 bg-rose-950/40 px-4 py-4 text-sm text-rose-200 ring-1 ring-rose-800/40">Не удалось загрузить список: ${escapeHtml(err && err.message ? err.message : 'ошибка сети')}</p>`;
+            }
+        };
+
+        equipmentListEl.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-start-inspection]');
+            if (!btn) return;
+            const id = btn.getAttribute('data-equipment-id');
+            if (id) equipmentIdInput.value = id;
+            showScreen('camera');
         });
 
         backToTasksBtn.addEventListener('click', () => {
@@ -401,6 +433,7 @@
         });
 
         showScreen('tasks');
+        loadEquipmentList();
     </script>
 </body>
 </html>
