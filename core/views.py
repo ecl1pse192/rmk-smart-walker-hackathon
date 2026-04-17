@@ -7,6 +7,7 @@ import re
 from decimal import Decimal
 
 import requests
+from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.request import Request
 from rest_framework import serializers
@@ -159,3 +160,6 @@ class ReadingViewSet(viewsets.ModelViewSet):
 class DefectViewSet(viewsets.ModelViewSet):
     queryset = Defect.objects.select_related("equipment").all()
     serializer_class = DefectSerializer
+
+def master_dashboard(request):
+    return render(request, 'master.html')
