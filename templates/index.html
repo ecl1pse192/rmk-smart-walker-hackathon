@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Умный обходчик</title>
+</head>
+<body>
+    <h1>Сфотографировать прибор</h1>
+    <form id="uploadForm">
+        <input type="hidden" id="equipment_id" value="f2fe0f50-3387-405f-b02d-2a45daeccf88">
+        <input type="hidden" id="inspection_id" value="d4d9dda0-851d-46f8-9ef4-c7b5cac8522d">
+        
+        <input type="file" id="instrument_photo" accept="image/*" capture="environment" required>
+        <button type="submit">Отправить</button>
+    </form>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Защита: точно ли выбран файл
+            const fileInput = document.getElementById('instrument_photo');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Пожалуйста, сделайте фото!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('equipment', document.getElementById('equipment_id').value);
+            formData.append('inspection', document.getElementById('inspection_id').value);
+            formData.append('instrument_photo', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/api/readings/', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                // Сначала пытаемся распарсить JSON, независимо от статуса
+                let result;
+                try {
+                    result = await response.json();
+                } catch (parseError) {
+                    throw new Error('Сервер вернул не JSON (возможно, 500 ошибка или отвалился БД)');
+                }
+
+                // Теперь проверяем HTTP статус
+                if (!response.ok) {
+                    // Если DRF вернул ошибку, вытаскиваем её текст (или показываем дефолтный)
+                    const errorMsg = result.error || JSON.stringify(result);
+                    throw new Error(`Ошибка API (${response.status}): ${errorMsg}`);
+                }
+
+                // Если всё отлично (201 Created)
+                alert(result.is_out_of_norm ? `АХТУНГ! Отклонение! Значение: ${result.value}` : `Всё ок. Значение: ${result.value}`);
+                
+            } catch (err) {
+                // Ловим и сетевые ошибки, и наши кастомные HTTP ошибки
+                alert(err.message);
+            }
+        });
+    </script>
+</body>
+</html>
