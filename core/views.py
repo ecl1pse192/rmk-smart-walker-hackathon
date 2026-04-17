@@ -8,8 +8,11 @@ from decimal import Decimal
 
 import requests
 from django.shortcuts import render
+from django.utils import timezone
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.request import Request
+from rest_framework.response import Response
 from rest_framework import serializers
 from rest_framework.serializers import BaseSerializer
 
@@ -140,7 +143,14 @@ class RouteViewSet(viewsets.ModelViewSet):
 class InspectionViewSet(viewsets.ModelViewSet):
     queryset = Inspection.objects.select_related("route", "worker").all()
     serializer_class = InspectionSerializer
-
+    
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        inspection = self.get_object()
+        inspection.status = 'completed'
+        inspection.completed_at = timezone.now()
+        inspection.save()
+        return Response({'status': 'ok', 'message': 'Inspection completed'})
 
 class ReadingViewSet(viewsets.ModelViewSet):
     queryset = Reading.objects.select_related("inspection", "equipment").all()

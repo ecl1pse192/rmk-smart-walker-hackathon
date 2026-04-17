@@ -9,6 +9,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-dvh bg-slate-900 text-slate-100 antialiased">
+    <!-- Таймер обхода (виден на всех экранах) -->
+    <div
+        id="timer-badge"
+        class="fixed right-3 top-3 z-50 hidden items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800/90 px-3 py-1.5 text-sm font-semibold tabular-nums text-slate-100 shadow-lg shadow-black/30 backdrop-blur"
+        aria-live="polite"
+    >
+        <span aria-hidden="true">⏳</span>
+        <span id="timer-value">00:00</span>
+    </div>
+
     <div class="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-28 pt-6">
         <!-- Экран 1: Задания (стартовый) -->
         <section id="screen-tasks" class="flex flex-1 flex-col gap-5">
@@ -20,7 +30,15 @@
 
             <div id="equipment-list" class="flex flex-1 flex-col gap-3"></div>
 
-            <footer class="mt-auto text-center text-xs text-slate-500">
+            <button
+                type="button"
+                id="finishRouteBtn"
+                class="mt-4 w-full rounded-2xl bg-amber-500 px-4 py-4 text-base font-bold text-slate-900 shadow-lg shadow-amber-900/30 transition hover:bg-amber-400 active:scale-[0.99]"
+            >
+                🏁 Завершить обход
+            </button>
+
+            <footer class="mt-6 text-center text-xs text-slate-500">
                 <div>Тестовая PWA-заглушка для хакатона.</div>
                 <div class="mt-1">API: <span class="font-mono text-slate-400">/api/readings/</span></div>
             </footer>
@@ -97,6 +115,159 @@
                     </div>
                 </form>
             </main>
+        </section>
+
+        <!-- Экран: Регистрация дефекта -->
+        <section id="screen-defect" class="hidden flex flex-1 flex-col gap-4">
+            <header class="flex items-center gap-3">
+                <button
+                    type="button"
+                    id="backFromDefectBtn"
+                    class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-600 bg-slate-800 text-slate-200 transition hover:bg-slate-700 active:scale-[0.98]"
+                    aria-label="Назад к заданиям"
+                >
+                    <span class="text-lg leading-none" aria-hidden="true">←</span>
+                </button>
+                <div class="min-w-0 flex-1">
+                    <div class="text-xs font-medium uppercase tracking-wide text-rose-400">Дефект</div>
+                    <h1 class="truncate text-lg font-semibold text-white">Зарегистрировать дефект</h1>
+                </div>
+            </header>
+
+            <main class="flex flex-1 flex-col gap-4">
+                <p class="text-sm text-slate-400">Опишите проблему, выберите серьёзность и приложите фото.</p>
+
+                <form id="defectForm" class="flex flex-col gap-4">
+                    <input type="hidden" id="defect_equipment_id" value="">
+                    <input type="hidden" id="defect_inspection_id" value="d4d9dda0-851d-46f8-9ef4-c7b5cac8522d">
+
+                    <label class="flex flex-col gap-2">
+                        <span class="text-sm font-medium text-slate-300">Описание проблемы</span>
+                        <textarea
+                            id="defect_description"
+                            rows="4"
+                            required
+                            placeholder="Например: течь масла из фланца, скол стрелки, запотевание стекла…"
+                            class="w-full rounded-2xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                        ></textarea>
+                    </label>
+
+                    <label class="flex flex-col gap-2">
+                        <span class="text-sm font-medium text-slate-300">Серьёзность</span>
+                        <select
+                            id="defect_severity"
+                            class="w-full rounded-2xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm text-slate-100 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                        >
+                            <option value="low">Низкая</option>
+                            <option value="medium" selected>Средняя</option>
+                            <option value="high">Высокая</option>
+                            <option value="critical">Критическая</option>
+                        </select>
+                    </label>
+
+                    <input type="file" id="defect_photo" accept="image/*" capture="environment" class="hidden">
+
+                    <button
+                        type="button"
+                        id="defectPhotoBtn"
+                        class="group relative w-full rounded-2xl bg-slate-700 px-4 py-4 text-left text-white shadow-lg shadow-black/30 ring-1 ring-white/10 active:scale-[0.99]"
+                    >
+                        <div class="flex items-center gap-4">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15" aria-hidden="true">📷</div>
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold">Прикрепить фото (опционально)</div>
+                                <div id="defectPhotoHint" class="mt-0.5 text-xs text-white/70">Открыть камеру устройства.</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <button
+                        type="submit"
+                        id="defectSendBtn"
+                        class="w-full rounded-2xl bg-rose-500 px-4 py-4 text-base font-semibold text-white shadow-sm ring-1 ring-rose-400/40 transition hover:bg-rose-400 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        Отправить дефект
+                    </button>
+
+                    <div id="defectStatusWrap" class="hidden rounded-2xl p-4 ring-1">
+                        <div class="flex items-start gap-3">
+                            <div id="defectStatusIcon" class="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg"></div>
+                            <div class="min-w-0 flex-1">
+                                <div id="defectStatusTitle" class="text-sm font-semibold"></div>
+                                <div id="defectStatusBody" class="mt-1 text-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </main>
+        </section>
+
+        <!-- Экран: Итоги обхода -->
+        <section id="screen-summary" class="hidden flex flex-1 flex-col gap-5">
+            <header>
+                <div class="text-xs font-medium uppercase tracking-wide text-emerald-400">Заключение</div>
+                <h1 class="mt-1 text-2xl font-semibold tracking-tight text-white">Обход завершён</h1>
+            </header>
+
+            <div class="flex flex-col items-center gap-3 rounded-2xl border border-emerald-800/60 bg-emerald-950/40 px-4 py-6 text-center ring-1 ring-emerald-700/40">
+                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-900/30">
+                    <svg viewBox="0 0 24 24" fill="none" class="h-8 w-8" aria-hidden="true">
+                        <path d="M20 7L10.5 16.5 4 10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h2 class="text-lg font-semibold text-emerald-100">Обход успешно завершён</h2>
+                <p class="max-w-xs text-sm text-emerald-200/80">
+                    Отчёт сформирован и передан в систему мониторинга.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div class="rounded-2xl border border-slate-700/80 bg-slate-800/50 p-3 text-center ring-1 ring-white/5">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Время</div>
+                    <div id="summary-time" class="mt-1 text-lg font-semibold tabular-nums text-white">00:00</div>
+                </div>
+                <div class="rounded-2xl border border-slate-700/80 bg-slate-800/50 p-3 text-center ring-1 ring-white/5">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Проверено</div>
+                    <div id="summary-checked" class="mt-1 text-lg font-semibold tabular-nums text-white">0</div>
+                </div>
+                <div class="rounded-2xl border border-rose-900/50 bg-rose-950/30 p-3 text-center ring-1 ring-rose-800/40">
+                    <div class="text-xs uppercase tracking-wide text-rose-400">Дефектов</div>
+                    <div id="summary-defects" class="mt-1 text-lg font-semibold tabular-nums text-rose-200">0</div>
+                </div>
+            </div>
+
+            <div class="overflow-hidden rounded-2xl border border-slate-700/80 ring-1 ring-white/5">
+                <table class="w-full border-collapse text-left text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-700 bg-slate-800/80 text-xs uppercase tracking-wide text-slate-400">
+                            <th scope="col" class="px-3 py-2 font-semibold">Оборудование</th>
+                            <th scope="col" class="px-3 py-2 font-semibold">Значение</th>
+                            <th scope="col" class="px-3 py-2 font-semibold">Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-tbody" class="divide-y divide-slate-700/80 [&>tr:nth-child(odd)]:bg-slate-800/30 [&>tr:nth-child(even)]:bg-slate-800/10">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="summary-status" class="hidden rounded-2xl p-4 ring-1"></div>
+
+            <div class="mt-2 flex flex-col gap-2">
+                <button
+                    type="button"
+                    id="confirmFinishBtn"
+                    class="w-full rounded-2xl bg-emerald-500 px-4 py-4 text-base font-semibold text-slate-900 shadow-lg shadow-emerald-900/20 transition hover:bg-emerald-400 active:scale-[0.99]"
+                >
+                    Подтвердить и отправить
+                </button>
+                <button
+                    type="button"
+                    id="backToTasksFromSummaryBtn"
+                    class="w-full rounded-2xl border border-slate-600 bg-slate-800/60 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-slate-700"
+                >
+                    Вернуться на главную
+                </button>
+            </div>
         </section>
 
         <!-- Экран: Карта (заглушка) -->
@@ -310,6 +481,16 @@
                 } else {
                     setStatus('ok', 'В пределах нормы', `Значение: ${result.value}`);
                 }
+
+                try {
+                    if (typeof recordReading === 'function') {
+                        recordReading(
+                            document.getElementById('equipment_id').value,
+                            result.value,
+                            !!result.is_out_of_norm
+                        );
+                    }
+                } catch (_) { /* state is optional */ }
                 
             } catch (err) {
                 // Ловим и сетевые ошибки, и наши кастомные HTTP ошибки
@@ -322,22 +503,35 @@
         /* --- SPA: показ экранов (не затрагивает отправку формы) --- */
         const screenTasks = document.getElementById('screen-tasks');
         const screenCamera = document.getElementById('screen-camera');
+        const screenDefect = document.getElementById('screen-defect');
+        const screenSummary = document.getElementById('screen-summary');
         const screenMap = document.getElementById('screen-map');
         const screenProfile = document.getElementById('screen-profile');
         const backToTasksBtn = document.getElementById('backToTasksBtn');
         const navTabs = document.querySelectorAll('.nav-tab');
 
-        const screens = { tasks: screenTasks, camera: screenCamera, map: screenMap, profile: screenProfile };
+        const screens = {
+            tasks: screenTasks,
+            camera: screenCamera,
+            defect: screenDefect,
+            summary: screenSummary,
+            map: screenMap,
+            profile: screenProfile,
+        };
+
+        const TAB_NAV_KEYS = new Set(['tasks', 'map', 'profile']);
+        const NAV_KEY_BY_SCREEN = { camera: 'tasks', defect: 'tasks', summary: 'tasks' };
 
         const showScreen = (name) => {
             Object.entries(screens).forEach(([key, el]) => {
+                if (!el) return;
                 if (key === name) {
                     el.classList.remove('hidden');
                 } else {
                     el.classList.add('hidden');
                 }
             });
-            const navKey = name === 'camera' ? 'tasks' : name;
+            const navKey = NAV_KEY_BY_SCREEN[name] || name;
             navTabs.forEach((tab) => {
                 const active = tab.getAttribute('data-nav') === navKey;
                 tab.setAttribute('data-active', active ? 'true' : 'false');
@@ -383,14 +577,25 @@
                         </div>
                         <span class="shrink-0 rounded-lg bg-slate-700/80 px-2 py-1 text-xs font-medium text-slate-300">Активно</span>
                     </div>
-                    <button
-                        type="button"
-                        data-start-inspection
-                        data-equipment-id="${escapeHtml(eq.id)}"
-                        class="mt-4 w-full rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-900 transition active:scale-[0.99] hover:bg-white"
-                    >
-                        Начать осмотр
-                    </button>
+                    <div class="mt-4 grid grid-cols-[1fr_auto] gap-2">
+                        <button
+                            type="button"
+                            data-start-inspection
+                            data-equipment-id="${escapeHtml(eq.id)}"
+                            class="rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-900 transition active:scale-[0.99] hover:bg-white"
+                        >
+                            Начать осмотр
+                        </button>
+                        <button
+                            type="button"
+                            data-open-defect
+                            data-equipment-id="${escapeHtml(eq.id)}"
+                            class="rounded-xl border border-rose-500/50 px-3 py-3 text-sm font-semibold text-rose-400 transition hover:bg-rose-500/10 active:scale-[0.99]"
+                            aria-label="Зарегистрировать дефект"
+                        >
+                            ⚠️ Дефект
+                        </button>
+                    </div>
                 </article>`
                 )
                 .join('');
@@ -407,18 +612,134 @@
                     throw new Error(`HTTP ${response.status}`);
                 }
                 const data = await response.json();
-                renderEquipmentCards(normalizeEquipmentPayload(data));
+                const items = normalizeEquipmentPayload(data);
+                equipmentCache = items;
+                renderEquipmentCards(items);
             } catch (err) {
                 equipmentListEl.innerHTML = `<p class="rounded-2xl border border-rose-900/50 bg-rose-950/40 px-4 py-4 text-sm text-rose-200 ring-1 ring-rose-800/40">Не удалось загрузить список: ${escapeHtml(err && err.message ? err.message : 'ошибка сети')}</p>`;
             }
         };
 
+        /* --- Состояние обхода: таймер, показания, дефекты --- */
+        const STORAGE_KEY = 'inspectionStateV1';
+        const timerBadge = document.getElementById('timer-badge');
+        const timerValueEl = document.getElementById('timer-value');
+
+        let equipmentCache = [];
+        let inspectionState = loadState();
+        let timerInterval = null;
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return emptyState();
+                const parsed = JSON.parse(raw);
+                return {
+                    startedAt: parsed.startedAt || null,
+                    readings: parsed.readings && typeof parsed.readings === 'object' ? parsed.readings : {},
+                    defects: Array.isArray(parsed.defects) ? parsed.defects : [],
+                };
+            } catch (_) {
+                return emptyState();
+            }
+        }
+        function emptyState() {
+            return { startedAt: null, readings: {}, defects: [] };
+        }
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(inspectionState));
+            } catch (_) { /* ignore */ }
+        }
+
+        const formatElapsed = (ms) => {
+            if (!ms || ms < 0) ms = 0;
+            const total = Math.floor(ms / 1000);
+            const h = Math.floor(total / 3600);
+            const m = Math.floor((total % 3600) / 60);
+            const s = total % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+        };
+
+        const tickTimer = () => {
+            if (!inspectionState.startedAt) return;
+            timerValueEl.textContent = formatElapsed(Date.now() - inspectionState.startedAt);
+        };
+
+        const showTimer = () => {
+            timerBadge.classList.remove('hidden');
+            timerBadge.classList.add('flex');
+        };
+        const hideTimer = () => {
+            timerBadge.classList.add('hidden');
+            timerBadge.classList.remove('flex');
+        };
+
+        const startInspectionTimer = () => {
+            if (!inspectionState.startedAt) {
+                inspectionState.startedAt = Date.now();
+                saveState();
+            }
+            showTimer();
+            tickTimer();
+            if (!timerInterval) timerInterval = setInterval(tickTimer, 1000);
+        };
+
+        const stopInspectionTimer = () => {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            hideTimer();
+        };
+
+        const resumeTimerIfNeeded = () => {
+            if (inspectionState.startedAt) {
+                showTimer();
+                tickTimer();
+                if (!timerInterval) timerInterval = setInterval(tickTimer, 1000);
+            }
+        };
+
+        function recordReading(equipmentId, value, isOutOfNorm) {
+            if (!equipmentId) return;
+            inspectionState.readings[equipmentId] = {
+                value: value,
+                is_out_of_norm: !!isOutOfNorm,
+                at: Date.now(),
+            };
+            saveState();
+        }
+
+        function recordDefect(equipmentId, description, severity) {
+            inspectionState.defects.push({
+                equipment: equipmentId,
+                description: description,
+                severity: severity,
+                at: Date.now(),
+            });
+            saveState();
+        }
+
+        /* --- Клики по списку оборудования: осмотр и дефект --- */
         equipmentListEl.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-start-inspection]');
-            if (!btn) return;
-            const id = btn.getAttribute('data-equipment-id');
-            if (id) equipmentIdInput.value = id;
-            showScreen('camera');
+            const startBtn = e.target.closest('[data-start-inspection]');
+            const defectBtn = e.target.closest('[data-open-defect]');
+
+            if (startBtn) {
+                const id = startBtn.getAttribute('data-equipment-id');
+                if (id) equipmentIdInput.value = id;
+                startInspectionTimer();
+                showScreen('camera');
+                return;
+            }
+            if (defectBtn) {
+                const id = defectBtn.getAttribute('data-equipment-id');
+                if (id) document.getElementById('defect_equipment_id').value = id;
+                startInspectionTimer();
+                showScreen('defect');
+            }
         });
 
         backToTasksBtn.addEventListener('click', () => {
@@ -428,14 +749,266 @@
         navTabs.forEach((tab) => {
             tab.addEventListener('click', () => {
                 const key = tab.getAttribute('data-nav');
-                if (key === 'tasks' || key === 'map' || key === 'profile') {
-                    showScreen(key);
-                }
+                if (TAB_NAV_KEYS.has(key)) showScreen(key);
             });
         });
 
+        /* --- Форма дефекта --- */
+        const defectForm = document.getElementById('defectForm');
+        const defectPhotoBtn = document.getElementById('defectPhotoBtn');
+        const defectPhotoInput = document.getElementById('defect_photo');
+        const defectPhotoHint = document.getElementById('defectPhotoHint');
+        const defectSendBtn = document.getElementById('defectSendBtn');
+        const backFromDefectBtn = document.getElementById('backFromDefectBtn');
+
+        const defectStatusWrap = document.getElementById('defectStatusWrap');
+        const defectStatusIcon = document.getElementById('defectStatusIcon');
+        const defectStatusTitle = document.getElementById('defectStatusTitle');
+        const defectStatusBody = document.getElementById('defectStatusBody');
+
+        const setDefectStatus = (kind, title, body) => {
+            defectStatusWrap.classList.remove(
+                'hidden', 'bg-emerald-50', 'ring-emerald-200',
+                'bg-rose-50', 'ring-rose-200', 'bg-slate-100', 'ring-slate-200'
+            );
+            defectStatusIcon.classList.remove('bg-emerald-600', 'bg-rose-600', 'bg-slate-700');
+            defectStatusTitle.classList.remove('text-emerald-900', 'text-rose-900', 'text-slate-900');
+            defectStatusBody.classList.remove('text-emerald-800', 'text-rose-800', 'text-slate-700');
+
+            let wrap = ['bg-slate-100', 'ring-slate-200'];
+            let icon = 'bg-slate-700';
+            let titleCls = 'text-slate-900';
+            let bodyCls = 'text-slate-700';
+
+            if (kind === 'ok') {
+                wrap = ['bg-emerald-50', 'ring-emerald-200'];
+                icon = 'bg-emerald-600';
+                titleCls = 'text-emerald-900';
+                bodyCls = 'text-emerald-800';
+            }
+            if (kind === 'bad') {
+                wrap = ['bg-rose-50', 'ring-rose-200'];
+                icon = 'bg-rose-600';
+                titleCls = 'text-rose-900';
+                bodyCls = 'text-rose-800';
+            }
+
+            defectStatusWrap.classList.add(...wrap);
+            defectStatusIcon.classList.add(icon);
+            defectStatusTitle.classList.add(titleCls);
+            defectStatusBody.classList.add(bodyCls);
+            defectStatusTitle.textContent = title;
+            defectStatusBody.textContent = body;
+        };
+
+        defectPhotoBtn.addEventListener('click', () => defectPhotoInput.click());
+        defectPhotoInput.addEventListener('change', () => {
+            if (defectPhotoInput.files && defectPhotoInput.files[0]) {
+                const f = defectPhotoInput.files[0];
+                defectPhotoHint.textContent = `Выбрано: ${f.name || 'фото'} (${Math.round(f.size / 1024)} KB)`;
+            } else {
+                defectPhotoHint.textContent = 'Открыть камеру устройства.';
+            }
+        });
+
+        backFromDefectBtn.addEventListener('click', () => {
+            showScreen('tasks');
+        });
+
+        defectForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const eqId = document.getElementById('defect_equipment_id').value;
+            const description = document.getElementById('defect_description').value.trim();
+            const severity = document.getElementById('defect_severity').value;
+
+            if (!eqId) {
+                setDefectStatus('bad', 'Не выбрано оборудование', 'Откройте форму через карточку прибора.');
+                return;
+            }
+            if (!description) {
+                setDefectStatus('bad', 'Опишите проблему', 'Поле «Описание» обязательно.');
+                return;
+            }
+
+            const fd = new FormData();
+            fd.append('equipment', eqId);
+            fd.append('description', description);
+            fd.append('severity', severity);
+            if (defectPhotoInput.files && defectPhotoInput.files[0]) {
+                fd.append('photo', defectPhotoInput.files[0]);
+            }
+
+            try {
+                defectSendBtn.disabled = true;
+                defectSendBtn.textContent = 'Отправляю…';
+                setDefectStatus('info', 'Отправка…', 'Создаю запись дефекта.');
+                const csrfToken = getCookie('csrftoken');
+                const resp = await fetch('/api/defects/', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {},
+                    body: fd,
+                });
+                let result = null;
+                try { result = await resp.json(); } catch (_) { result = null; }
+                if (!resp.ok) {
+                    const errorMsg = (result && (result.error || JSON.stringify(result))) || `HTTP ${resp.status}`;
+                    throw new Error(errorMsg);
+                }
+                recordDefect(eqId, description, severity);
+                setDefectStatus('ok', 'Дефект зарегистрирован', 'Запись создана в системе.');
+                defectForm.reset();
+                defectPhotoHint.textContent = 'Открыть камеру устройства.';
+            } catch (err) {
+                setDefectStatus('bad', 'Ошибка отправки', err && err.message ? err.message : 'Не удалось отправить запрос.');
+            } finally {
+                defectSendBtn.disabled = false;
+                defectSendBtn.textContent = 'Отправить дефект';
+            }
+        });
+
+        /* --- Итоговый экран --- */
+        const finishRouteBtn = document.getElementById('finishRouteBtn');
+        const confirmFinishBtn = document.getElementById('confirmFinishBtn');
+        const backToTasksFromSummaryBtn = document.getElementById('backToTasksFromSummaryBtn');
+        const summaryTimeEl = document.getElementById('summary-time');
+        const summaryCheckedEl = document.getElementById('summary-checked');
+        const summaryDefectsEl = document.getElementById('summary-defects');
+        const summaryTbody = document.getElementById('summary-tbody');
+        const summaryStatusEl = document.getElementById('summary-status');
+
+        const severityLabel = (s) => ({
+            low: 'Низкая',
+            medium: 'Средняя',
+            high: 'Высокая',
+            critical: 'Критическая',
+        }[s] || s || '—');
+
+        const renderSummary = () => {
+            const startedAt = inspectionState.startedAt || Date.now();
+            const elapsed = Date.now() - startedAt;
+            summaryTimeEl.textContent = formatElapsed(elapsed);
+
+            const readings = inspectionState.readings || {};
+            const defects = inspectionState.defects || [];
+            const checkedCount = Object.keys(readings).length;
+
+            summaryCheckedEl.textContent = String(checkedCount);
+            summaryDefectsEl.textContent = String(defects.length);
+
+            const defectIds = new Set(defects.map((d) => String(d.equipment)));
+            const rows = [];
+
+            const cacheById = new Map(equipmentCache.map((eq) => [String(eq.id), eq]));
+            const allIds = new Set([
+                ...equipmentCache.map((eq) => String(eq.id)),
+                ...Object.keys(readings),
+                ...defectIds,
+            ]);
+
+            allIds.forEach((id) => {
+                const eq = cacheById.get(id);
+                const name = eq ? `${eq.name}${eq.shop ? ' (' + eq.shop + ')' : ''}` : id.slice(0, 8) + '…';
+                const r = readings[id];
+                let statusHtml;
+                let valueStr = '—';
+                const hasDefect = defectIds.has(id);
+
+                if (r) {
+                    valueStr = r.value != null ? String(r.value) : '—';
+                    if (r.is_out_of_norm) {
+                        statusHtml = '<span class="inline-flex items-center rounded-md bg-rose-600/25 px-2 py-0.5 text-xs font-semibold text-rose-200 ring-1 ring-rose-500/40">Вне нормы</span>';
+                    } else {
+                        statusHtml = '<span class="inline-flex items-center rounded-md bg-emerald-600/25 px-2 py-0.5 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-500/40">Норма</span>';
+                    }
+                } else if (hasDefect) {
+                    statusHtml = '<span class="inline-flex items-center rounded-md bg-amber-600/25 px-2 py-0.5 text-xs font-semibold text-amber-200 ring-1 ring-amber-500/40">Дефект</span>';
+                } else {
+                    statusHtml = '<span class="inline-flex items-center rounded-md bg-slate-700/70 px-2 py-0.5 text-xs font-semibold text-slate-300 ring-1 ring-slate-600">Не проверено</span>';
+                }
+
+                if (hasDefect && r) {
+                    statusHtml +=
+                        ' <span class="ml-1 inline-flex items-center rounded-md bg-amber-600/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-200 ring-1 ring-amber-500/30">+дефект</span>';
+                }
+
+                rows.push(`
+                    <tr class="border-slate-700/60">
+                        <td class="px-3 py-2 text-slate-100">${escapeHtml(name)}</td>
+                        <td class="px-3 py-2 font-mono text-slate-200">${escapeHtml(valueStr)}</td>
+                        <td class="px-3 py-2">${statusHtml}</td>
+                    </tr>
+                `);
+            });
+
+            summaryTbody.innerHTML = rows.length
+                ? rows.join('')
+                : '<tr><td colspan="3" class="px-3 py-6 text-center text-slate-500">Нет данных обхода</td></tr>';
+
+            summaryStatusEl.classList.add('hidden');
+        };
+
+        const setSummaryStatus = (kind, text) => {
+            summaryStatusEl.className = 'rounded-2xl p-3 text-sm ring-1 ' + (
+                kind === 'ok' ? 'bg-emerald-950/50 text-emerald-200 ring-emerald-800/50' :
+                kind === 'bad' ? 'bg-rose-950/50 text-rose-200 ring-rose-800/50' :
+                'bg-slate-800/60 text-slate-300 ring-slate-700'
+            );
+            summaryStatusEl.textContent = text;
+            summaryStatusEl.classList.remove('hidden');
+        };
+
+        finishRouteBtn.addEventListener('click', () => {
+            if (!inspectionState.startedAt) startInspectionTimer();
+            renderSummary();
+            showScreen('summary');
+        });
+
+        backToTasksFromSummaryBtn.addEventListener('click', () => {
+            showScreen('tasks');
+        });
+
+        confirmFinishBtn.addEventListener('click', async () => {
+            const inspectionId = document.getElementById('inspection_id').value;
+            confirmFinishBtn.disabled = true;
+            confirmFinishBtn.textContent = 'Отправляю…';
+            setSummaryStatus('info', 'Формируем отчёт…');
+
+            let backendOk = false;
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const resp = await fetch(`/api/inspections/${inspectionId}/complete/`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {},
+                });
+                backendOk = resp.ok;
+            } catch (_) { backendOk = false; }
+
+            inspectionState = emptyState();
+            saveState();
+            stopInspectionTimer();
+
+            if (backendOk) {
+                setSummaryStatus('ok', 'Отчёт отправлен в систему мониторинга.');
+            } else {
+                setSummaryStatus('ok', 'Обход завершён локально. Отчёт сохранён.');
+            }
+
+            confirmFinishBtn.disabled = false;
+            confirmFinishBtn.textContent = 'Подтвердить и отправить';
+
+            setTimeout(() => {
+                showScreen('tasks');
+                loadEquipmentList();
+            }, 900);
+        });
+
         showScreen('tasks');
-        loadEquipmentList();
+        loadEquipmentList().then(() => {
+            resumeTimerIfNeeded();
+        });
     </script>
     <script>
         if ('serviceWorker' in navigator) {
