@@ -270,16 +270,66 @@
             </div>
         </section>
 
-        <!-- Экран: Карта (заглушка) -->
-        <section id="screen-map" class="hidden flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <div class="rounded-full border border-slate-700 bg-slate-800/50 p-6">
-                <svg class="h-12 w-12 text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M12 21s7-4.5 7-10a7 7 0 1 0-14 0c0 5.5 7 10 7 10Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-                    <circle cx="12" cy="11" r="2.5" stroke="currentColor" stroke-width="1.6"/>
+        <!-- Экран: Карта цеха -->
+        <section id="screen-map" class="hidden flex flex-1 flex-col gap-4">
+            <header>
+                <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Карта</div>
+                <h1 class="mt-1 text-2xl font-semibold tracking-tight text-white">Схема оборудования</h1>
+                <p class="mt-2 text-sm text-slate-400">Нажмите на прибор, чтобы открыть осмотр.</p>
+            </header>
+
+            <div class="overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-950 p-2 ring-1 ring-white/5">
+                <svg
+                    id="map-svg"
+                    viewBox="0 0 400 400"
+                    class="block h-auto w-full"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="img"
+                    aria-label="Схема цеха с оборудованием"
+                >
+                    <!-- Внешние стены -->
+                    <rect x="10" y="10" width="380" height="380" rx="12" ry="12"
+                          fill="#0b1220" class="stroke-slate-700" stroke-width="2"/>
+
+                    <!-- Зоны -->
+                    <rect x="28" y="36" width="160" height="140" rx="8" ry="8"
+                          fill="none" class="stroke-slate-700" stroke-width="1.5" stroke-dasharray="4 4"/>
+                    <text x="36" y="52" class="fill-slate-500" font-size="11">Цех 1</text>
+
+                    <rect x="212" y="36" width="160" height="140" rx="8" ry="8"
+                          fill="none" class="stroke-slate-700" stroke-width="1.5" stroke-dasharray="4 4"/>
+                    <text x="220" y="52" class="fill-slate-500" font-size="11">Цех 2</text>
+
+                    <rect x="28" y="210" width="344" height="160" rx="8" ry="8"
+                          fill="none" class="stroke-slate-700" stroke-width="1.5" stroke-dasharray="4 4"/>
+                    <text x="36" y="226" class="fill-slate-500" font-size="11">Линия подачи</text>
+
+                    <!-- Проём двери -->
+                    <line x1="200" y1="10" x2="200" y2="36" stroke="#0b1220" stroke-width="4"/>
+
+                    <!-- Пины оборудования -->
+                    <g id="map-pins"></g>
                 </svg>
             </div>
-            <h2 class="text-lg font-semibold text-white">Карта цеха</h2>
-            <p class="max-w-xs text-sm text-slate-400">Раздел в разработке. Здесь будет схема оборудования.</p>
+
+            <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-300" aria-label="Легенда">
+                <li class="flex items-center gap-1.5">
+                    <span class="inline-block h-3 w-3 rounded-full bg-slate-500 ring-1 ring-white/10"></span>
+                    К осмотру
+                </li>
+                <li class="flex items-center gap-1.5">
+                    <span class="inline-block h-3 w-3 rounded-full bg-emerald-500 ring-1 ring-white/10"></span>
+                    Норма
+                </li>
+                <li class="flex items-center gap-1.5">
+                    <span class="inline-block h-3 w-3 rounded-full bg-rose-500 ring-1 ring-white/10"></span>
+                    Вне нормы
+                </li>
+                <li class="flex items-center gap-1.5">
+                    <span class="inline-block h-3 w-3 rounded-full bg-amber-500 ring-1 ring-white/10"></span>
+                    Дефект
+                </li>
+            </ul>
         </section>
 
         <!-- Экран: Профиль (заглушка) -->
@@ -615,6 +665,7 @@
                 const items = normalizeEquipmentPayload(data);
                 equipmentCache = items;
                 renderEquipmentCards(items);
+                renderMap();
             } catch (err) {
                 equipmentListEl.innerHTML = `<p class="rounded-2xl border border-rose-900/50 bg-rose-950/40 px-4 py-4 text-sm text-rose-200 ring-1 ring-rose-800/40">Не удалось загрузить список: ${escapeHtml(err && err.message ? err.message : 'ошибка сети')}</p>`;
             }
@@ -710,6 +761,7 @@
                 at: Date.now(),
             };
             saveState();
+            renderMap();
         }
 
         function recordDefect(equipmentId, description, severity) {
@@ -720,6 +772,109 @@
                 at: Date.now(),
             });
             saveState();
+            renderMap();
+        }
+
+        /* --- Карта цеха --- */
+        const MAP_VIEW = { w: 400, h: 400, padX: 46, padY: 70 };
+        const mapPinsEl = document.getElementById('map-pins');
+
+        const computeMapPositions = (items) => {
+            const n = items.length;
+            const positions = new Array(n);
+            const cols = Math.max(1, Math.ceil(Math.sqrt(n)));
+            const rows = Math.max(1, Math.ceil(n / cols));
+            const areaW = MAP_VIEW.w - 2 * MAP_VIEW.padX;
+            const areaH = MAP_VIEW.h - 2 * MAP_VIEW.padY;
+            const stepX = cols > 1 ? areaW / (cols - 1) : 0;
+            const stepY = rows > 1 ? areaH / (rows - 1) : 0;
+
+            for (let i = 0; i < n; i++) {
+                const eq = items[i] || {};
+                const lx = typeof eq.location_x === 'number' ? eq.location_x : null;
+                const ly = typeof eq.location_y === 'number' ? eq.location_y : null;
+
+                if (lx != null && ly != null && isFinite(lx) && isFinite(ly)) {
+                    let px, py;
+                    if (lx >= 0 && lx <= 1 && ly >= 0 && ly <= 1) {
+                        px = MAP_VIEW.padX + lx * areaW;
+                        py = MAP_VIEW.padY + ly * areaH;
+                    } else {
+                        px = Math.max(MAP_VIEW.padX, Math.min(MAP_VIEW.w - MAP_VIEW.padX, lx));
+                        py = Math.max(MAP_VIEW.padY, Math.min(MAP_VIEW.h - MAP_VIEW.padY, ly));
+                    }
+                    positions[i] = { x: px, y: py };
+                    continue;
+                }
+
+                const r = Math.floor(i / cols);
+                const c = i % cols;
+                const cx = cols === 1 ? MAP_VIEW.w / 2 : MAP_VIEW.padX + c * stepX;
+                const cy = rows === 1 ? MAP_VIEW.h / 2 : MAP_VIEW.padY + r * stepY;
+                positions[i] = { x: cx, y: cy };
+            }
+            return positions;
+        };
+
+        const pinColorFor = (eqId) => {
+            const defects = inspectionState.defects || [];
+            const hasDefect = defects.some((d) => String(d.equipment) === String(eqId));
+            if (hasDefect) return { fill: 'fill-amber-500', stroke: '#f59e0b' };
+
+            const r = (inspectionState.readings || {})[eqId];
+            if (r) {
+                return r.is_out_of_norm
+                    ? { fill: 'fill-rose-500', stroke: '#f43f5e' }
+                    : { fill: 'fill-emerald-500', stroke: '#10b981' };
+            }
+            return { fill: 'fill-slate-500', stroke: '#64748b' };
+        };
+
+        function renderMap() {
+            if (!mapPinsEl) return;
+            if (!Array.isArray(equipmentCache) || equipmentCache.length === 0) {
+                mapPinsEl.innerHTML = '';
+                return;
+            }
+            const positions = computeMapPositions(equipmentCache);
+            mapPinsEl.innerHTML = equipmentCache
+                .map((eq, i) => {
+                    const { x, y } = positions[i];
+                    const c = pinColorFor(eq.id);
+                    const name = String(eq.name || '');
+                    const shortName = name.length > 20 ? name.slice(0, 19) + '…' : name;
+                    const eqId = escapeHtml(eq.id);
+                    return `
+                        <g>
+                            <circle
+                                cx="${x}" cy="${y}" r="10"
+                                class="cursor-pointer ${c.fill}"
+                                stroke="${c.stroke}" stroke-width="2"
+                                data-map-equipment-id="${eqId}"
+                            ></circle>
+                            <text
+                                x="${x}" y="${y + 24}"
+                                text-anchor="middle"
+                                font-size="10"
+                                class="fill-slate-300"
+                                pointer-events="none"
+                            >${escapeHtml(shortName)}</text>
+                        </g>
+                    `;
+                })
+                .join('');
+        }
+
+        if (mapPinsEl) {
+            mapPinsEl.addEventListener('click', (e) => {
+                const target = e.target.closest('[data-map-equipment-id]');
+                if (!target) return;
+                const id = target.getAttribute('data-map-equipment-id');
+                if (!id) return;
+                equipmentIdInput.value = id;
+                startInspectionTimer();
+                showScreen('camera');
+            });
         }
 
         /* --- Клики по списку оборудования: осмотр и дефект --- */
