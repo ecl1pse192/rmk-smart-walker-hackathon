@@ -153,7 +153,7 @@ class ReadingViewSet(viewsets.ModelViewSet):
         value = recognize_value_from_image(photo)
         is_out_of_norm = value < equipment.normal_min or value > equipment.normal_max
 
-        serializer.save(value=value, is_out_of_norm=is_out_of_norm)
+        serializer.save(value=value, is_out_of_norm=is_out_of_norm, instrument_photo=photo)
 
 
 class DefectViewSet(viewsets.ModelViewSet):
