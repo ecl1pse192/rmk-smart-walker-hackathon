@@ -4,13 +4,26 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import TemplateView
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.static import serve
 from core.views import master_dashboard
+
+PWA_STATIC_ROOT = settings.BASE_DIR / "static"
 
 urlpatterns = [
     path("", ensure_csrf_cookie(TemplateView.as_view(template_name="index.html"))),
     path("admin/", admin.site.urls),
     path("api/", include("core.urls")),
     path('master/', master_dashboard, name='master-dashboard'),
+    path(
+        "manifest.json",
+        serve,
+        {"document_root": PWA_STATIC_ROOT, "path": "manifest.json"},
+    ),
+    path(
+        "sw.js",
+        serve,
+        {"document_root": PWA_STATIC_ROOT, "path": "sw.js"},
+    ),
 ]
 
 if settings.DEBUG:

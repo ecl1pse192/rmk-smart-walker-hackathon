@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
     <title>Умный обходчик</title>
+    <link rel="manifest" href="/manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-dvh bg-slate-900 text-slate-100 antialiased">
@@ -434,6 +436,13 @@
 
         showScreen('tasks');
         loadEquipmentList();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
     </script>
 </body>
 </html>
