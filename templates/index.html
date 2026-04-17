@@ -4,25 +4,163 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Умный обходчик</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>Сфотографировать прибор</h1>
-    <form id="uploadForm">
-        <input type="hidden" id="equipment_id" value="f2fe0f50-3387-405f-b02d-2a45daeccf88">
-        <input type="hidden" id="inspection_id" value="d4d9dda0-851d-46f8-9ef4-c7b5cac8522d">
-        
-        <input type="file" id="instrument_photo" accept="image/*" capture="environment" required>
-        <button type="submit">Отправить</button>
-    </form>
+<body class="min-h-dvh bg-slate-50 text-slate-900">
+    <div class="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-10 pt-6">
+        <header class="mb-6">
+            <div class="text-xs font-medium text-slate-500">Умный обходчик энергоцеха</div>
+            <h1 class="mt-1 text-2xl font-semibold tracking-tight">Снять показание</h1>
+            <p class="mt-2 text-sm text-slate-600">Сделайте фото прибора и отправьте в систему для проверки нормы.</p>
+        </header>
+
+        <main class="flex flex-1 flex-col gap-4">
+            <form id="uploadForm" class="flex flex-col gap-4">
+                <input type="hidden" id="equipment_id" value="f2fe0f50-3387-405f-b02d-2a45daeccf88">
+                <input type="hidden" id="inspection_id" value="d4d9dda0-851d-46f8-9ef4-c7b5cac8522d">
+
+                <input type="file" id="instrument_photo" accept="image/*" capture="environment" required class="hidden">
+
+                <button
+                    type="button"
+                    id="takePhotoBtn"
+                    class="group relative w-full rounded-2xl bg-slate-900 px-4 py-5 text-left text-white shadow-lg shadow-slate-900/10 active:scale-[0.99]"
+                >
+                    <div class="flex items-center gap-4">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
+                            <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6" aria-hidden="true">
+                                <path d="M9 6.5l1-1.5h4l1 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                                <path d="M7.5 8.5h9A3.5 3.5 0 0 1 20 12v5.5A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5V12a3.5 3.5 0 0 1 3.5-3.5Z" stroke="currentColor" stroke-width="1.6" />
+                                <path d="M12 16.75a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" stroke="currentColor" stroke-width="1.6" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-base font-semibold">Сделать фото</div>
+                            <div class="mt-0.5 text-sm text-white/70" id="photoHint">Камера откроется сразу на заднюю.</div>
+                        </div>
+                        <div class="text-white/60">
+                            <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5" aria-hidden="true">
+                                <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                    </div>
+                </button>
+
+                <button
+                    type="submit"
+                    id="sendBtn"
+                    class="w-full rounded-2xl bg-white px-4 py-4 text-base font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled
+                >
+                    Отправить
+                </button>
+
+                <div id="statusWrap" class="hidden rounded-2xl p-4 ring-1">
+                    <div class="flex items-start gap-3">
+                        <div id="statusIcon" class="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg"></div>
+                        <div class="min-w-0 flex-1">
+                            <div id="statusTitle" class="text-sm font-semibold"></div>
+                            <div id="statusBody" class="mt-1 text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </main>
+
+        <footer class="mt-8 text-center text-xs text-slate-500">
+            <div>Тестовая PWA-заглушка для хакатона.</div>
+            <div class="mt-1">API: <span class="font-mono">/api/readings/</span></div>
+        </footer>
+    </div>
 
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('instrument_photo');
+        const takePhotoBtn = document.getElementById('takePhotoBtn');
+        const sendBtn = document.getElementById('sendBtn');
+
+        const statusWrap = document.getElementById('statusWrap');
+        const statusIcon = document.getElementById('statusIcon');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusBody = document.getElementById('statusBody');
+        const photoHint = document.getElementById('photoHint');
+
+        const setStatus = (kind, title, body) => {
+            statusWrap.classList.remove('hidden', 'bg-emerald-50', 'ring-emerald-200', 'bg-rose-50', 'ring-rose-200', 'bg-slate-100', 'ring-slate-200');
+            statusIcon.classList.remove('bg-emerald-600', 'bg-rose-600', 'bg-slate-700');
+            statusTitle.classList.remove('text-emerald-900', 'text-rose-900', 'text-slate-900');
+            statusBody.classList.remove('text-emerald-800', 'text-rose-800', 'text-slate-700');
+
+            let wrap = ['bg-slate-100', 'ring-slate-200'];
+            let icon = 'bg-slate-700';
+            let titleCls = 'text-slate-900';
+            let bodyCls = 'text-slate-700';
+            let svg = `<svg viewBox="0 0 24 24" fill="none" class="h-5 w-5 text-white" aria-hidden="true">
+                <path d="M12 7v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 17h.01" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+            </svg>`;
+
+            if (kind === 'ok') {
+                wrap = ['bg-emerald-50', 'ring-emerald-200'];
+                icon = 'bg-emerald-600';
+                titleCls = 'text-emerald-900';
+                bodyCls = 'text-emerald-800';
+                svg = `<svg viewBox="0 0 24 24" fill="none" class="h-5 w-5 text-white" aria-hidden="true">
+                    <path d="M20 7L10.5 16.5 4 10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>`;
+            }
+
+            if (kind === 'bad') {
+                wrap = ['bg-rose-50', 'ring-rose-200'];
+                icon = 'bg-rose-600';
+                titleCls = 'text-rose-900';
+                bodyCls = 'text-rose-800';
+                svg = `<svg viewBox="0 0 24 24" fill="none" class="h-5 w-5 text-white" aria-hidden="true">
+                    <path d="M12 9v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                    <path d="M12 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M10 4h4l7 13H3L10 4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                </svg>`;
+            }
+
+            statusWrap.classList.add(...wrap);
+            statusIcon.classList.add(icon);
+            statusTitle.classList.add(titleCls);
+            statusBody.classList.add(bodyCls);
+
+            statusIcon.innerHTML = svg;
+            statusTitle.textContent = title;
+            statusBody.textContent = body;
+        };
+
+        const setBusy = (busy) => {
+            takePhotoBtn.disabled = !!busy;
+            sendBtn.disabled = !!busy || !fileInput.files || fileInput.files.length === 0;
+            sendBtn.textContent = busy ? 'Отправляю…' : 'Отправить';
+        };
+
+        takePhotoBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            const hasFile = !!fileInput.files && fileInput.files.length > 0;
+            sendBtn.disabled = !hasFile;
+            if (hasFile) {
+                const f = fileInput.files[0];
+                photoHint.textContent = `Выбрано: ${f.name || 'фото'} (${Math.round(f.size / 1024)} KB)`;
+                setStatus('info', 'Фото готово к отправке', 'Нажмите «Отправить», чтобы создать Reading в API.');
+            } else {
+                photoHint.textContent = 'Камера откроется сразу на заднюю.';
+                statusWrap.classList.add('hidden');
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             // Защита: точно ли выбран файл
-            const fileInput = document.getElementById('instrument_photo');
             if (!fileInput.files || fileInput.files.length === 0) {
-                alert('Пожалуйста, сделайте фото!');
+                setStatus('bad', 'Фото не выбрано', 'Пожалуйста, сделайте фото прибора и попробуйте снова.');
                 return;
             }
 
@@ -32,6 +170,8 @@
             formData.append('instrument_photo', fileInput.files[0]);
 
             try {
+                setBusy(true);
+                setStatus('info', 'Отправка…', 'Загружаю фото и создаю запись в API.');
                 const response = await fetch('/api/readings/', {
                     method: 'POST',
                     body: formData
@@ -53,11 +193,17 @@
                 }
 
                 // Если всё отлично (201 Created)
-                alert(result.is_out_of_norm ? `АХТУНГ! Отклонение! Значение: ${result.value}` : `Всё ок. Значение: ${result.value}`);
+                if (result.is_out_of_norm) {
+                    setStatus('bad', 'Отклонение от нормы', `Значение: ${result.value}`);
+                } else {
+                    setStatus('ok', 'В пределах нормы', `Значение: ${result.value}`);
+                }
                 
             } catch (err) {
                 // Ловим и сетевые ошибки, и наши кастомные HTTP ошибки
-                alert(err.message);
+                setStatus('bad', 'Ошибка отправки', err && err.message ? err.message : 'Не удалось отправить запрос.');
+            } finally {
+                setBusy(false);
             }
         });
     </script>
