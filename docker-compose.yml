@@ -26,7 +26,7 @@ services:
       - .env
     volumes:
       - .:/app
-      - media_volume:/app/media
+      - ./media:/app/media
     ports:
       - "8000:8000"
     environment:
@@ -44,4 +44,3 @@ services:
 
 volumes:
   postgres_data:
-  media_volume:
