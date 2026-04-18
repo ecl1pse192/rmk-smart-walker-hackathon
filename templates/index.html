@@ -596,13 +596,18 @@
                 } catch (_) { /* state is optional */ }
                 
             } catch (err) {
-                // ЧИТ-КОД ДЛЯ ОФЛАЙНА: Сохраняем пустой статус для вида
-                try {
-                    if (typeof recordReading === 'function') {
-                        recordReading(document.getElementById('equipment_id').value, '—', false);
-                    }
-                } catch (_) {}
-                setStatus('ok', 'Сохранено локально (Офлайн)', 'Фото в очереди. Уйдет при появлении сети.');
+                // ПРОВЕРКА: Если в сообщении есть "Ошибка API", значит сервер ответил, но данные кривые
+                if (err.message && err.message.includes('Ошибка API')) {
+                    setStatus('bad', 'Ошибка отправки', err.message);
+                } else {
+                    // Это реальный офлайн (сетевая ошибка "Load failed")
+                    try {
+                        if (typeof recordReading === 'function') {
+                            recordReading(document.getElementById('equipment_id').value, '—', false);
+                        }
+                    } catch (_) {}
+                    setStatus('ok', 'Сохранено локально (Офлайн)', 'Фото в очереди. Уйдет при появлении сети.');
+                }
             } finally {
                 setBusy(false);
             }
@@ -1086,11 +1091,16 @@
                 defectForm.reset();
                 defectPhotoHint.textContent = 'Открыть камеру устройства.';
             } catch (err) {
-                // ЧИТ-КОД ДЛЯ ОФЛАЙНА: Если нет сети, сохраняем локально!
-                recordDefect(eqId, description, severity);
-                setDefectStatus('ok', 'Сохранено локально (Офлайн)', 'Дефект отправлен в очередь и уйдет при появлении сети.');
-                defectForm.reset();
-                defectPhotoHint.textContent = 'Открыть камеру устройства.';
+                // Если ошибка содержит текст ошибки или статус HTTP, значит сервер на связи
+                if (err.message && (err.message.includes('HTTP') || err.message.length < 100)) {
+                    setDefectStatus('bad', 'Ошибка отправки', err.message);
+                } else {
+                    // Реальный офлайн
+                    recordDefect(eqId, description, severity);
+                    setDefectStatus('ok', 'Сохранено локально (Офлайн)', 'Дефект отправлен в очередь и уйдет при появлении сети.');
+                    defectForm.reset();
+                    defectPhotoHint.textContent = 'Открыть камеру устройства.';
+                }
             } finally {
                 defectSendBtn.disabled = false;
                 defectSendBtn.textContent = 'Отправить дефект';
