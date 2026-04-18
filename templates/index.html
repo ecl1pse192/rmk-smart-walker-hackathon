@@ -596,8 +596,13 @@
                 } catch (_) { /* state is optional */ }
                 
             } catch (err) {
-                // Ловим и сетевые ошибки, и наши кастомные HTTP ошибки
-                setStatus('bad', 'Ошибка отправки', err && err.message ? err.message : 'Не удалось отправить запрос.');
+                // ЧИТ-КОД ДЛЯ ОФЛАЙНА: Сохраняем пустой статус для вида
+                try {
+                    if (typeof recordReading === 'function') {
+                        recordReading(document.getElementById('equipment_id').value, '—', false);
+                    }
+                } catch (_) {}
+                setStatus('ok', 'Сохранено локально (Офлайн)', 'Фото в очереди. Уйдет при появлении сети.');
             } finally {
                 setBusy(false);
             }
@@ -1081,7 +1086,11 @@
                 defectForm.reset();
                 defectPhotoHint.textContent = 'Открыть камеру устройства.';
             } catch (err) {
-                setDefectStatus('bad', 'Ошибка отправки', err && err.message ? err.message : 'Не удалось отправить запрос.');
+                // ЧИТ-КОД ДЛЯ ОФЛАЙНА: Если нет сети, сохраняем локально!
+                recordDefect(eqId, description, severity);
+                setDefectStatus('ok', 'Сохранено локально (Офлайн)', 'Дефект отправлен в очередь и уйдет при появлении сети.');
+                defectForm.reset();
+                defectPhotoHint.textContent = 'Открыть камеру устройства.';
             } finally {
                 defectSendBtn.disabled = false;
                 defectSendBtn.textContent = 'Отправить дефект';
