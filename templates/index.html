@@ -20,8 +20,61 @@
     </div>
 
     <div class="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-28 pt-6">
-        <!-- Экран 1: Задания (стартовый) -->
-        <section id="screen-tasks" class="flex flex-1 flex-col gap-5">
+        <!-- Экран 0: Вход (стартовый) -->
+        <section id="screen-login" class="hidden flex flex-1 flex-col items-center justify-center gap-6">
+            <div class="flex flex-col items-center gap-3 text-center">
+                <div class="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-lg shadow-emerald-900/40 ring-1 ring-emerald-400/40">
+                    <svg viewBox="0 0 24 24" fill="none" class="h-10 w-10 text-white" aria-hidden="true">
+                        <path d="M4 12l5 5L20 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400">Энергоцех</div>
+                    <h1 class="mt-1 text-3xl font-semibold tracking-tight text-white">Умный обходчик</h1>
+                    <p class="mt-2 text-sm text-slate-400">Введите PIN-код, чтобы начать смену.</p>
+                </div>
+            </div>
+
+            <form id="loginForm" class="flex w-full max-w-xs flex-col gap-4">
+                <label class="flex flex-col gap-2">
+                    <span class="text-xs font-medium uppercase tracking-wide text-slate-400">PIN-код</span>
+                    <input
+                        id="loginPin"
+                        type="password"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        autocomplete="one-time-code"
+                        maxlength="4"
+                        placeholder="••••"
+                        class="w-full rounded-2xl border border-slate-700 bg-slate-800/80 px-4 py-4 text-center text-2xl font-semibold tracking-[0.6em] text-white placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                        required
+                    >
+                </label>
+
+                <button
+                    type="submit"
+                    id="loginSubmitBtn"
+                    class="w-full rounded-2xl bg-emerald-500 px-4 py-4 text-base font-semibold text-slate-900 shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-400 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300 disabled:shadow-none"
+                    disabled
+                >
+                    Войти
+                </button>
+
+                <button
+                    type="button"
+                    id="pwaInstallBtn"
+                    class="hidden w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/60 px-4 py-3 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/10 active:scale-[0.99]"
+                >
+                    <span aria-hidden="true">📲</span>
+                    <span>Установить на телефон</span>
+                </button>
+            </form>
+
+            <p class="text-center text-xs text-slate-500">Тестовый вход: любые 4 цифры.</p>
+        </section>
+
+        <!-- Экран 1: Задания -->
+        <section id="screen-tasks" class="hidden flex flex-1 flex-col gap-5">
             <header>
                 <div class="text-xs font-medium uppercase tracking-wide text-slate-500">Умный обходчик энергоцеха</div>
                 <h1 class="mt-1 text-2xl font-semibold tracking-tight text-white">Задания</h1>
@@ -551,6 +604,7 @@
         });
 
         /* --- SPA: показ экранов (не затрагивает отправку формы) --- */
+        const screenLogin = document.getElementById('screen-login');
         const screenTasks = document.getElementById('screen-tasks');
         const screenCamera = document.getElementById('screen-camera');
         const screenDefect = document.getElementById('screen-defect');
@@ -559,8 +613,10 @@
         const screenProfile = document.getElementById('screen-profile');
         const backToTasksBtn = document.getElementById('backToTasksBtn');
         const navTabs = document.querySelectorAll('.nav-tab');
+        const bottomNav = document.querySelector('nav[aria-label="Основная навигация"]');
 
         const screens = {
+            login: screenLogin,
             tasks: screenTasks,
             camera: screenCamera,
             defect: screenDefect,
@@ -581,6 +637,15 @@
                     el.classList.add('hidden');
                 }
             });
+
+            if (bottomNav) {
+                if (name === 'login') {
+                    bottomNav.classList.add('hidden');
+                } else {
+                    bottomNav.classList.remove('hidden');
+                }
+            }
+
             const navKey = NAV_KEY_BY_SCREEN[name] || name;
             navTabs.forEach((tab) => {
                 const active = tab.getAttribute('data-nav') === navKey;
@@ -1160,7 +1225,55 @@
             }, 900);
         });
 
-        showScreen('tasks');
+        /* --- Логин (заглушка для хакатона) и установка PWA --- */
+        const loginForm = document.getElementById('loginForm');
+        const loginPin = document.getElementById('loginPin');
+        const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+        const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+
+        loginPin.addEventListener('input', () => {
+            const digitsOnly = loginPin.value.replace(/\D/g, '').slice(0, 4);
+            if (digitsOnly !== loginPin.value) loginPin.value = digitsOnly;
+            loginSubmitBtn.disabled = digitsOnly.length !== 4;
+        });
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (loginPin.value.replace(/\D/g, '').length !== 4) return;
+            showScreen('tasks');
+            loginPin.value = '';
+            loginSubmitBtn.disabled = true;
+        });
+
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            pwaInstallBtn.classList.remove('hidden');
+            pwaInstallBtn.classList.add('inline-flex');
+        });
+
+        pwaInstallBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            pwaInstallBtn.disabled = true;
+            try {
+                await deferredPrompt.prompt();
+                await deferredPrompt.userChoice.catch(() => null);
+            } catch (_) { /* ignore */ }
+            deferredPrompt = null;
+            pwaInstallBtn.classList.add('hidden');
+            pwaInstallBtn.classList.remove('inline-flex');
+            pwaInstallBtn.disabled = false;
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            pwaInstallBtn.classList.add('hidden');
+            pwaInstallBtn.classList.remove('inline-flex');
+        });
+
+        showScreen('login');
         loadEquipmentList().then(() => {
             resumeTimerIfNeeded();
         });

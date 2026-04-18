@@ -15,3 +15,5 @@ staticfiles/
 # Docker и ОС
 .DS_Store
 Thumbs.db
+
+MVP_STATUS.md

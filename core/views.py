@@ -147,9 +147,9 @@ class InspectionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
         inspection = self.get_object()
-        inspection.status = 'completed'
-        inspection.completed_at = timezone.now()
-        inspection.save()
+        inspection.status = Inspection.Status.COMPLETED
+        inspection.ended_at = timezone.now()
+        inspection.save(update_fields=['status', 'ended_at'])
         return Response({'status': 'ok', 'message': 'Inspection completed'})
 
 class ReadingViewSet(viewsets.ModelViewSet):
