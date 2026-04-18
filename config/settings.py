@@ -14,6 +14,8 @@ ALLOWED_HOSTS: List[str] = (
     else [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
 )
 
+CSRF_TRUSTED_ORIGINS = ['https://rmk-smart-walker-ecl1pse.amvera.io']
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
