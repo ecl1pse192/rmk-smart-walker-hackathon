@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.auth.views import LoginView
 from django.urls import include, path
 from django.views.generic import TemplateView
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -14,6 +15,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("core.urls")),
     path('master/', master_dashboard, name='master-dashboard'),
+    path("auth/login/", LoginView.as_view(next_page="/"), name="login"),
     path(
         "manifest.json",
         serve,
